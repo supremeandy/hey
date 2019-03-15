@@ -16,6 +16,9 @@
 package requester
 
 import (
+  "fmt"
+  "log"
+  "strconv"
 	"bytes"
 	"crypto/tls"
 	"io"
@@ -26,7 +29,7 @@ import (
 	"os"
 	"sync"
 	"time"
-
+  "math/rand"
 	"golang.org/x/net/http2"
 )
 
@@ -94,6 +97,11 @@ type Work struct {
 	start    time.Duration
 
 	report *report
+
+  IsRange bool
+  RangeFrom  int64
+  RangeTo   int64
+  RangePrefix string
 }
 
 func (b *Work) writer() io.Writer {
@@ -146,7 +154,7 @@ func (b *Work) makeRequest(c *http.Client) {
 	var code int
 	var dnsStart, connStart, resStart, reqStart, delayStart time.Duration
 	var dnsDuration, connDuration, resDuration, reqDuration, delayDuration time.Duration
-	req := cloneRequest(b.Request, b.RequestBody)
+	req := cloneRequest(b.Request, b.RequestBody,b.IsRange,b.RangeFrom,b.RangeTo,b.RangePrefix)
 	trace := &httptrace.ClientTrace{
 		DNSStart: func(info httptrace.DNSStartInfo) {
 			dnsStart = now()
@@ -255,10 +263,23 @@ func (b *Work) runWorkers() {
 
 // cloneRequest returns a clone of the provided *http.Request.
 // The clone is a shallow copy of the struct and its Header map.
-func cloneRequest(r *http.Request, body []byte) *http.Request {
+func cloneRequest(r *http.Request, body []byte,isRange bool,rangeFrom int64,rangeTo int64,rangePrefix string) *http.Request {
 	// shallow copy of the struct
 	r2 := new(http.Request)
 	*r2 = *r
+  //is range
+  if isRange {
+    baseUrl := r2.URL.String()
+    rand.Seed(time.Now().UnixNano())
+    num := rangeFrom + rand.Int63n(rangeTo-rangeFrom)
+    newUrl := baseUrl + rangePrefix + strconv.FormatInt(num,10)
+    fmt.Println(newUrl)
+    u, err := url.Parse(newUrl)
+    if err != nil {
+        log.Fatal(err)
+    }
+    r2.URL = u
+  }
 	// deep copy of the Header
 	r2.Header = make(http.Header, len(r.Header))
 	for k, s := range r.Header {

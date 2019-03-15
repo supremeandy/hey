@@ -56,6 +56,11 @@ var (
 	t = flag.Int("t", 20, "")
 	z = flag.Duration("z", 0, "")
 
+  isrange = flag.Bool("isrange", false, "")
+  rangefrom = flag.Int64("rangefrom",0,"") 
+  rangeto = flag.Int64("rangeto",0,"") 
+  rangeprefix = flag.String("rangeprefix","","") 
+
 	h2   = flag.Bool("h2", false, "")
 	cpus = flag.Int("cpus", runtime.GOMAXPROCS(-1), "")
 
@@ -99,6 +104,11 @@ Options:
   -disable-redirects    Disable following of HTTP redirects
   -cpus                 Number of used cpu cores.
                         (default for current machine is %d cores)
+
+  -isrange              Enable modify url, range request, base-url + prefix-url(-rangeprefix) + range-url(from -rangefrom to -rangeto)
+  -rangefrom
+  -rangeto
+  -rangeprefix
 `
 
 func main() {
@@ -119,6 +129,10 @@ func main() {
 	conc := *c
 	q := *q
 	dur := *z
+  isRange := *isrange
+  rangeFrom := *rangefrom
+  rangeTo := *rangeto
+  rangePrefix := *rangeprefix
 
 	if dur > 0 {
 		num = math.MaxInt32
@@ -133,6 +147,10 @@ func main() {
 		if num < conc {
 			usageAndExit("-n cannot be less than -c.")
 		}
+
+    if rangeFrom > rangeTo {
+      usageAndExit("-rangefrom must <= -rangeto.")
+    }
 	}
 
 	url := flag.Args()[0]
@@ -225,6 +243,10 @@ func main() {
 		H2:                 *h2,
 		ProxyAddr:          proxyURL,
 		Output:             *output,
+    IsRange:            isRange,
+    RangeFrom:          rangeFrom,
+    RangeTo:            rangeTo,
+    RangePrefix:        rangePrefix,
 	}
 	w.Init()
 
